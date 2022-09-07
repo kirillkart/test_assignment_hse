@@ -1,0 +1,88 @@
+install.packages("readr")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("data.table")
+install.packages("tidyverse")
+install.packages("plyr")
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(data.table)
+library(tidyverse)
+library(plyr)
+
+      # TASK I
+
+raw_data <- readr::read_csv(file.choose()) # reading the file via the readr package
+
+
+head(raw_data) # Let's first take a look at our raw dataset
+
+data_filtered <- raw_data %>% select(area, cluster, cluster_name, keyword, x, y, count) # one column ('good') has been removed
+
+levels(factor(data_filtered$cluster))
+
+head(data_filtered)
+
+
+class(data_filtered$cluster) # checking the class of the cluster variable
+
+colSums(is.na(data_filtered)) # It seems that the number of NA's is extremely small, so we can remove the corresponding rows
+
+data_filtered<- data_filtered %>% na.omit(data_filtered)
+
+data_filtered$color <- data_filtered$cluster # copying the 'cluster' variable will allow us to quickly recode the levels 
+
+
+
+levels(factor(data_filtered$color)) 
+
+data_final <- within(data_filtered,color<-factor(color,labels=c('red','blue','green','orange')))
+
+head(data_final)
+
+df<- data.frame() # we can create an empty data frame in order to add filtered values later
+
+class(data_final$cluster) # 
+
+for (i in 0:4){
+  
+  temp <- data_final %>% filter(cluster == i)
+  temp <- temp[!duplicated(temp$keyword), ]
+  df <- rbind(df, temp)           
+}     # This way we can get unique values within each cluster but keywords may repeat in different clusters
+
+df$x <- as.numeric(df$x)
+df$y <- as.numeric(df$y)
+
+
+
+      # TASK II
+
+install.packages("wesanderson")
+install.packages("fdm2id")
+install.packages("tm")
+library(tm)
+library(wesanderson)
+library(fdm2id)
+
+df$count <- as.numeric(df$count)
+areas <- levels(factor(df$area))
+
+for (i in areas){
+  i <- removePunctuation(i) 
+  png(paste("scatterplot_area_", i , ".png" ), width = 800, height = 800,
+      units = "px", pointsize = 12, bg = "white", res = NA,
+      restoreConsole = T) # since we cannot use the same file name for each plot, we can avoid it this way. 
+  # In addition, file name is more attractive to the eye now since it contains the area name
+  
+  temp_df <- df %>% filter(area == i)
+  temp_df$cluster <- as.character(temp_df$cluster)
+  current_plot <- ggplot(temp_df,aes(x,y,label = keyword)) + geom_text(nudge_x = 0, nudge_y = 0.4, vjust = "inward", hjust = "inward") + 
+    geom_point(temp_df, mapping = aes(x = x, shape = factor(area), y = y,colour = cluster, size = `count`))  + theme(legend.position = "bottom",legend.text = element_text(size = 8)) + 
+    guides(col=guide_legend("Cluster")) 
+  
+  print(current_plot)
+  dev.off()
+  } # with the use of the for loop, we can avoid repetition of the code.
+# All the plots are generated and export to the png format automatically. 
